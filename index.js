@@ -51,6 +51,14 @@ async function run() {
 
         });
 
+        // Getting the articles by category
+        app.get('/articles/category/:categoryName', async(req,res)=>{
+                const category = decodeURIComponent(req.params.categoryName);
+                const articles =await articlesCollection.find({category}).toArray();
+                res.send(articles);
+
+        })
+
 
         // Posting New Article
         app.post('/articles', async (req, res) => {
