@@ -33,11 +33,24 @@ async function run() {
         const articlesCollection = client.db('knowHive').collection('articles');
 
 
+        // Getting All Articles
         app.get('/articles', async (req, res) => {
             const cursor = await articlesCollection.find();
             const result = await cursor.toArray();
             res.send(result);
         })
+
+        // Getting articles that are most recent
+        app.get('/articles/recent', async (req, res) => {
+
+            const recentArticles = await articlesCollection.find({})
+                .sort({ createdAt: -1 })
+                .limit(6)
+                .toArray();
+            res.send(recentArticles);
+
+        });
+
 
         // Posting New Article
         app.post('/articles', async (req, res) => {
