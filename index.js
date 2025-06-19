@@ -43,7 +43,7 @@ async function run() {
 
 
         // Getting user Specific articles
-        app.get('/idArticles',async(req,res)=>{
+        app.get('/myArticles',async(req,res)=>{
             const userEmail = req.query.email;
             const query = {
                 email : userEmail
@@ -114,6 +114,16 @@ async function run() {
             const result =await articlesCollection.deleteOne(query);
             res.send(result);
 
+        })
+
+        // updating id specific data
+        app.patch('/articles/:id',async(req,res)=>{
+            const id = req.params.id;
+            const changes = req.body;
+            const query = {_id: new ObjectId(id)};
+            const update = {$set:changes};
+            const result =await articlesCollection.updateOne(query,update);
+            res.send(result);
         })
 
 
