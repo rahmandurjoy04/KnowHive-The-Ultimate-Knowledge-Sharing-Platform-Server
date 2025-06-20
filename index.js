@@ -32,6 +32,7 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
         const articlesCollection = client.db('knowHive').collection('articles');
+        const commentsCollection = client.db('knowHive').collection('comments');
 
 
         // Getting All Articles
@@ -56,9 +57,6 @@ async function run() {
 
         app.get('/articles/:id', async (req, res) => {
             const { id } = req.params;
-            if (!ObjectId.isValid(id)) {
-                return res.status(400).send({ error: 'Invalid article ID format' });
-            }
             const query = { _id: new ObjectId(id) };
             const result = await articlesCollection.findOne(query);
             res.send(result);
@@ -114,6 +112,20 @@ async function run() {
                 res.status(500).json({ error: 'Internal server error' });
             }
         });
+        // Trending Tags Endpoint
+        app.get('/trending-tags', async (req, res) => {
+            try {
+                const tags = await articlesCollection.aggregate([
+                    { $unwind: '$tags' },
+                    { $group: { _id: '$tags', count: { $sum: 1 } } },
+                    { $sort: { count: -1 } },
+                    { $limit: 3 }
+                ]).toArray();
+                res.json(tags);
+            } catch (err) {
+                res.status(500).json({ error: 'Failed to fetch tags' });
+            }
+        });
 
 
         // Posting New Article
@@ -149,6 +161,53 @@ async function run() {
             res.send(result);
         })
 
+        // Posting Likes
+        app.patch('/articles/:id/like', async (req, res) => {
+            const postId = req.params.id;
+            console.log(postId);
+            const query = { _id: new ObjectId(postId) };
+            const update = { $inc: { likes: 1 } }
+            const result = await articlesCollection.updateOne(query, update);
+            res.send(result);
+        });
+
+
+
+        // Comment Related Apis
+        // Getting All Comments
+        app.get('/comments', async (req, res) => {
+            const cursor = await commentsCollection.find();
+            const result = await cursor.toArray();
+            res.send(result)
+        })
+
+        // Getting article_id specific comments
+        app.get('/comments/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { article_id: id };
+            const result = await commentsCollection.find(query).toArray();
+            res.send(result);
+        })
+
+
+
+        // Posting Comments
+        app.post('/comments', async (req, res) => {
+            const commentData = req.body;
+            const result = await commentsCollection.insertOne(commentData);
+            res.send(result);
+        })
+
+        // // Posting Likes
+        // app.patch('/comments/:id', async (req, res) => {
+        //     const postId = req.params.id;
+
+        //     const result = await commentsCollection.updateOne(
+        //         { article_id: postId },
+        //         { $inc: { likes: 1 } }
+        //     );
+        //     res.send(result);
+        // });
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
