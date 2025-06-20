@@ -43,11 +43,11 @@ async function run() {
 
 
         // Getting user Specific articles
-        app.get('/myArticles',async(req,res)=>{
+        app.get('/myArticles', async (req, res) => {
             const userEmail = req.query.email;
             const query = {
-                email : userEmail
-            } 
+                email: userEmail
+            }
             const result = await articlesCollection.find(query).toArray();
             res.send(result);
         })
@@ -60,7 +60,6 @@ async function run() {
                 return res.status(400).send({ error: 'Invalid article ID format' });
             }
             const query = { _id: new ObjectId(id) };
-            console.log(query);
             const result = await articlesCollection.findOne(query);
             res.send(result);
 
@@ -93,6 +92,30 @@ async function run() {
         })
 
 
+        // Getting top contributors
+        app.get('/top-contributors', async (req, res) => {
+            try {
+                const contributors = await articlesCollection.aggregate([
+                    {
+                        $group: {
+                            _id: '$author_id',
+                            username: { $first: '$username' },
+                            authorImage: { $first: '$authorImage' },
+                            count: { $sum: 1 }
+                        }
+                    },
+                    { $sort: { count: -1 } },
+                    { $limit: 4 }
+                ]).toArray();
+
+                res.json(contributors);
+            } catch (error) {
+                console.error('Error fetching top contributors:', error);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+
+
         // Posting New Article
         app.post('/articles', async (req, res) => {
             const newArticle = req.body;
@@ -108,21 +131,21 @@ async function run() {
 
 
         // Deleting Id specific data
-        app.delete('/articles/:id',async(req,res)=>{
+        app.delete('/articles/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)};
-            const result =await articlesCollection.deleteOne(query);
+            const query = { _id: new ObjectId(id) };
+            const result = await articlesCollection.deleteOne(query);
             res.send(result);
 
         })
 
         // updating id specific data
-        app.patch('/articles/:id',async(req,res)=>{
+        app.patch('/articles/:id', async (req, res) => {
             const id = req.params.id;
             const changes = req.body;
-            const query = {_id: new ObjectId(id)};
-            const update = {$set:changes};
-            const result =await articlesCollection.updateOne(query,update);
+            const query = { _id: new ObjectId(id) };
+            const update = { $set: changes };
+            const result = await articlesCollection.updateOne(query, update);
             res.send(result);
         })
 
