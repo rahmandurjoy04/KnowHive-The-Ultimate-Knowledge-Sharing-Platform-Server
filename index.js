@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 
 // dotenv requirement
 require('dotenv').config();
@@ -12,8 +14,7 @@ const port = process.env.PORT || 3000;
 // middleWare
 app.use(cors());
 app.use(express.json());
-
-
+app.use(cookieParser());
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@durjoys-db.smvgnqx.mongodb.net/?retryWrites=true&w=majority&appName=Durjoys-DB`;
@@ -27,12 +28,42 @@ const client = new MongoClient(uri, {
     }
 });
 
+// JWT middlewares
+const verifyJWT = (req, res, next) => {
+    const token = req?.headers?.authorization?.split(' ')[1];
+    if (!token) {
+        return res.status(401).send({ message: 'Unauthorized Access!' })
+    }
+
+    jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, decoded) => {
+        if (err) {
+            console.log(err);
+            return res.status(401).send({ message: 'Unauthorized Access!' })
+        }
+
+        req.tokenEmail = decoded.email;
+        next()
+    })
+
+
+
+
+}
+
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
         const articlesCollection = client.db('knowHive').collection('articles');
         const commentsCollection = client.db('knowHive').collection('comments');
+
+        // jwt token related apis
+        app.post('/jwt', async (req, res) => {
+            const userData = { email: req.body.email };
+            const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET,
+                { expiresIn: '7d' });
+            res.send({ "token": token })
+        })
+
 
 
         // Getting All Articles
@@ -43,9 +74,14 @@ async function run() {
         })
 
 
-        // Getting user Specific articles
-        app.get('/myArticles', async (req, res) => {
+        // Getting user Specific articles and implementing jwt
+        app.get('/myArticles', verifyJWT, async (req, res) => {
             const userEmail = req.query.email;
+            const decodedEmail = req.tokenEmail;
+
+            if (decodedEmail !== userEmail) {
+                return res.status(403).send({ message: 'Forbidden Access!' })
+            }
             const query = {
                 email: userEmail
             }
@@ -77,9 +113,6 @@ async function run() {
                 res.status(500).send({ error: 'Failed to fetch recent articles.' });
             }
         });
-
-
-
 
 
         // Getting the articles by category
@@ -174,6 +207,8 @@ async function run() {
 
 
         // Comment Related Apis
+
+
         // Getting All Comments
         app.get('/comments', async (req, res) => {
             const cursor = await commentsCollection.find();
@@ -198,20 +233,7 @@ async function run() {
             res.send(result);
         })
 
-        // // Posting Likes
-        // app.patch('/comments/:id', async (req, res) => {
-        //     const postId = req.params.id;
 
-        //     const result = await commentsCollection.updateOne(
-        //         { article_id: postId },
-        //         { $inc: { likes: 1 } }
-        //     );
-        //     res.send(result);
-        // });
-
-        // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
