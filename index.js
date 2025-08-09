@@ -145,6 +145,69 @@ async function run() {
                 res.status(500).json({ error: 'Internal server error' });
             }
         });
+
+        // getting All Contributors
+        app.get('/contributors', async (req, res) => {
+            try {
+
+                const contributorsWithLastPost = await articlesCollection.aggregate([
+                    {
+                        $group: {
+                            _id: '$author_id',
+                            username: { $first: '$username' },
+                            email: { $first: '$email' },
+                            authorImage: { $first: '$authorImage' },
+                            postCount: { $sum: 1 },
+                            articles: {
+                                $push: {
+                                    _id: '$_id',
+                                    title: '$title',
+                                    createdAt: '$createdAt',
+                                    date: '$date',
+                                    thumbnailURL: '$thumbnailURL'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        $addFields: {
+                            lastArticle: {
+                                $arrayElemAt: [
+                                    {
+                                        $slice: [
+                                            {
+                                                $filter: {
+                                                    input: {
+                                                        $sortArray: {
+                                                            input: '$articles',
+                                                            sortBy: { createdAt: -1 }
+                                                        }
+                                                    },
+                                                    as: 'art',
+                                                    cond: { $ne: ['$$art', null] }
+                                                }
+                                            }, 1
+                                        ]
+                                    }, 0
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        $project: {
+                            articles: 0
+                        }
+                    },
+                    { $sort: { postCount: -1 } } // Optional: sort by most posts
+                ]).toArray();
+
+                res.json(contributorsWithLastPost);
+            } catch (error) {
+                console.error('Error fetching contributors:', error);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+
         // Trending Tags Endpoint
         app.get('/trending-tags', async (req, res) => {
             try {
@@ -173,6 +236,7 @@ async function run() {
             const result = await articlesCollection.insertOne(newArticle);
             res.send(result);
         })
+
 
 
         // Deleting Id specific data
