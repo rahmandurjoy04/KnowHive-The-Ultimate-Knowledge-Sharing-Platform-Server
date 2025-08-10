@@ -246,7 +246,7 @@ async function run() {
         })
 
 
-        app.get('/subscribe', async (req, res) => {
+        app.post('/subscribe', async (req, res) => {
             const { email } = req.body;
             // Send confirmation email
             const mailOptions = {
