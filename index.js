@@ -252,6 +252,7 @@ async function run() {
         app.patch('/articles/:id', async (req, res) => {
             const id = req.params.id;
             const changes = req.body;
+            changes.updatedAt = new Date();
             const query = { _id: new ObjectId(id) };
             const update = { $set: changes };
             const result = await articlesCollection.updateOne(query, update);
@@ -275,8 +276,7 @@ async function run() {
 
         // Getting All Comments
         app.get('/comments', async (req, res) => {
-            const cursor = await commentsCollection.find();
-            const result = await cursor.toArray();
+            const result = await commentsCollection.find().toArray();
             res.send(result)
         })
 
