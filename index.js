@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 
@@ -45,10 +46,17 @@ const verifyJWT = (req, res, next) => {
         next()
     })
 
-
-
-
 }
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.KNOWHIVE_EMAIL,
+                pass: process.env.KNOWHIVE_EMAIL_PASS
+            }
+        });
+
+        
 
 async function run() {
     try {
@@ -236,6 +244,33 @@ async function run() {
             const result = await articlesCollection.insertOne(newArticle);
             res.send(result);
         })
+
+
+        app.get('/subscribe', async (req, res) => {
+            const { email } = req.body;
+            // Send confirmation email
+            const mailOptions = {
+                from: `"KnowHive - Ultimate Knowledge Sharing Website" ${process.env.KNOWHIVE_EMAIL}`,
+                to: email,
+                subject: 'Subscription Confirmed',
+                text: "Thank you for subscribing to KnowHive's newsletter!",
+                html: `
+                <h1>Thank you for subscribing to our newsletter!</h1>
+                <p>Thank you for Showing interest in Our Website</p>
+                
+                `
+            };
+
+            try {
+                await transporter.sendMail(mailOptions);
+                res.json({ message: 'Subscription successful, confirmation email sent.' });
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ message: 'Failed to send confirmation email.' });
+            }
+        });
+
+
 
 
 
